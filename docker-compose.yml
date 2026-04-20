@@ -1,0 +1,45 @@
+version: '3.9'
+
+services:
+  postgres:
+    image: postgres:14
+    container_name: snies_postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-snies}
+      POSTGRES_USER: ${POSTGRES_USER:-snies}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-snies}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "${POSTGRES_USER:-snies}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build: .
+    container_name: snies_app
+    environment:
+      # Pass through environment variables from .env
+      DRY_RUN_ONLY: ${DRY_RUN_ONLY:-true}
+      STRICT_REQUIRED_FILES: ${STRICT_REQUIRED_FILES:-true}
+      POSTGRES_DB: ${POSTGRES_DB:-snies}
+      POSTGRES_USER: ${POSTGRES_USER:-snies}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-snies}
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      SNIES_BASE_URL: ${SNIES_BASE_URL:-https://snies.mineducacion.gov.co/portal/ESTADISTICAS/Bases-consolidadas/}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+      - ./app:/app/app
+      - ./sql:/app/sql
+    command: []
+
+volumes:
+  pgdata:
