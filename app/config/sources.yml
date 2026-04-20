@@ -1,0 +1,14 @@
+## Fallback URLs for SNIES data
+#
+# If the automated discovery of dataset URLs fails, the pipeline will use the URLs defined below.
+# Replace the placeholders with actual links if necessary.  Do not include credentials in this file.
+
+docentes:
+  2022: "https://example.com/path/to/docentes_2022.xlsx"
+  2023: "https://example.com/path/to/docentes_2023.xlsx"
+  2024: "https://example.com/path/to/docentes_2024.xlsx"
+
+matriculados:
+  2022: "https://example.com/path/to/matriculados_2022.xlsx"
+  2023: "https://example.com/path/to/matriculados_2023.xlsx"
+  2024: "https://example.com/path/to/matriculados_2024.xlsx"
