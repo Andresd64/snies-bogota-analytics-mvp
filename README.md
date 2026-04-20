@@ -1,78 +1,78 @@
-# SNIES Bogotá Analytics MVP
+# MVP de Analítica SNIES Bogotá
 
-This repository contains a minimal, cost‑efficient data engineering MVP for producing the **ratio of students per teacher** for higher education institutions (IES) in Bogotá using official SNIES data for the years **2022–2024**.  The project downloads the required datasets from the SNIES portal, validates them, transforms and loads them into PostgreSQL, and exposes an analytics‑ready mart that can be consumed by BI tools such as Tableau or PowerBI.
+Este repositorio contiene un MVP mínimo y eficiente en costos de ingeniería de datos para producir la **relación de estudiantes por docente** para las instituciones de educación superior (IES) de Bogotá utilizando datos oficiales del SNIES para los años **2022–2024**. El proyecto descarga los conjuntos de datos requeridos desde el portal SNIES, los valida, los transforma y los carga en PostgreSQL, y expone un mart analítico listo para ser consumido por herramientas de BI como Tableau o PowerBI.
 
-## Problem statement
+## Planteamiento del problema
 
-The technical challenge requires calculating the student/teacher ratio for IES in Bogotá between 2022 and 2024.  Only six datasets are needed: **Docentes 2022–2024** and **Estudiantes Matriculados 2022–2024**.  These datasets are published on the official [SNIES Bases Consolidadas portal](https://snies.mineducacion.gov.co/portal/ESTADISTICAS/Bases-consolidadas/), which defines *Matriculados* as all enrolled students and *Docentes* as teaching staff.  The goal of this MVP is to automate the ingestion, validation, transformation and storage of these datasets while prioritising simplicity and cost.
+El desafío técnico requiere calcular la relación estudiante/docente para las IES de Bogotá entre 2022 y 2024. Solo se necesitan seis conjuntos de datos: **Docentes 2022–2024** y **Estudiantes Matriculados 2022–2024**. Estos conjuntos de datos se publican en el portal oficial de [Bases Consolidadas del SNIES](https://snies.mineducacion.gov.co/portal/ESTADISTICAS/Bases-consolidadas/), que define *Matriculados* como todos los estudiantes inscritos y *Docentes* como el personal docente. El objetivo de este MVP es automatizar la ingestión, validación, transformación y almacenamiento de estos conjuntos de datos, priorizando la simplicidad y el costo.
 
-## Scope
+## Alcance
 
-This MVP intentionally limits its scope in order to maximise cost efficiency and minimise operational overhead:
+Este MVP limita intencionalmente su alcance con el fin de maximizar la eficiencia en costos y minimizar la sobrecarga operativa:
 
-* Only the six required datasets (Docentes and Estudiantes Matriculados for 2022, 2023 and 2024) are consumed.
-* Only institutions located in Bogotá (according to the SNIES metadata) are processed.
-* The solution uses PostgreSQL as the analytical serving layer and avoids heavier orchestration frameworks.
-* A dual validation strategy is implemented: discovery of dataset URLs from the SNIES portal, followed by technical validation of each downloaded file (existence, size, format, basic schema).
-* Fallback URLs are configurable in `app/config/sources.yml` so that the pipeline can continue if the portal structure changes.
+* Solo se consumen los seis conjuntos de datos requeridos (Docentes y Estudiantes Matriculados para 2022, 2023 y 2024).
+* Solo se procesan instituciones ubicadas en Bogotá (según la metadata del SNIES).
+* La solución utiliza PostgreSQL como capa de servicio analítico y evita frameworks de orquestación más pesados.
+* Se implementa una estrategia de validación dual: descubrimiento de las URL de los conjuntos de datos desde el portal SNIES, seguido de la validación técnica de cada archivo descargado (existencia, tamaño, formato, esquema básico).
+* Las URL de respaldo se pueden configurar en `app/config/sources.yml` para que el pipeline pueda continuar si cambia la estructura del portal.
 
-## High‑level architecture
+## Arquitectura de alto nivel
 
-The following diagram summarises the solution flow:
+El siguiente diagrama resume el flujo de la solución:
 
+```text
+Portal SNIES (Bases Consolidadas)    →    Descargador y Validador    →    Almacenamiento raw    →    Transformador    →    PostgreSQL (staging)    →    Mart analítico    →    BI/Reportes
 ```
-SNIES portal (Bases Consolidadas)    →    Downloader & Validator    →    Raw storage    →    Transformer    →    PostgreSQL (staging)    →    Analytics mart    →    BI/Reporting
-```
 
-1. **Downloader & Validator** – Scrapes the SNIES portal, discovers the required dataset URLs, downloads the Excel files, validates their integrity (HTTP status, file size, extension, ability to open as Excel) and caches them locally.
-2. **Raw storage** – Stores the original downloaded files in `data/raw/`.
-3. **Transformer** – Uses `pandas` and `openpyxl` to normalise column names, enforce schema, filter to the years 2022–2024 and the city of Bogotá, and prepare staging tables.
-4. **Loader** – Loads the cleaned data into PostgreSQL staging tables, aggregates the student and teacher counts at the IES/year level and computes the student‑teacher ratio.
-5. **Analytics mart** – Exposes the final result in the view `analytics.mart_student_teacher_ratio`, which can be consumed by BI tools.
+1. **Descargador y Validador** – Extrae el portal SNIES, descubre las URL de los conjuntos de datos requeridos, descarga los archivos de Excel, valida su integridad (estado HTTP, tamaño del archivo, extensión, capacidad de abrirse como Excel) y los almacena localmente en caché.
+2. **Almacenamiento raw** – Almacena los archivos originales descargados en `data/raw/`.
+3. **Transformador** – Usa `pandas` y `openpyxl` para normalizar nombres de columnas, aplicar el esquema, filtrar a los años 2022–2024 y a la ciudad de Bogotá, y preparar tablas de staging.
+4. **Cargador** – Carga los datos limpios en tablas de staging en PostgreSQL, agrega los conteos de estudiantes y docentes a nivel de IES/año y calcula la relación estudiante-docente.
+5. **Mart analítico** – Expone el resultado final en la vista `analytics.mart_student_teacher_ratio`, que puede ser consumida por herramientas de BI.
 
-This architecture deliberately avoids unnecessary complexity (no Spark, Airflow or distributed systems) to keep the MVP lightweight and inexpensive while fulfilling the challenge requirements.
+Esta arquitectura evita deliberadamente complejidad innecesaria (sin Spark, Airflow ni sistemas distribuidos) para mantener el MVP liviano y económico mientras cumple con los requisitos del desafío.
 
-## Technology stack
+## Stack tecnológico
 
-* **Python 3.11** – Main programming language.
-* **pandas** – Data manipulation and transformation.
-* **requests** & **BeautifulSoup** – Downloading and parsing SNIES portal pages.
-* **openpyxl** – Reading Excel files.
-* **psycopg2‑binary** – Loading data into PostgreSQL.
-* **PostgreSQL 14** – Analytical database.
-* **Docker Compose** – Reproducible local deployment.
+* **Python 3.11** – Lenguaje principal de programación.
+* **pandas** – Manipulación y transformación de datos.
+* **requests** & **BeautifulSoup** – Descarga y análisis de páginas del portal SNIES.
+* **openpyxl** – Lectura de archivos Excel.
+* **psycopg2-binary** – Carga de datos en PostgreSQL.
+* **PostgreSQL 14** – Base de datos analítica.
+* **Docker Compose** – Despliegue local reproducible.
 
-## Quickstart
+## Inicio rápido
 
-### Running with Docker Compose
+### Ejecución con Docker Compose
 
-1. Clone the repository and change into the project directory:
+1. Clona el repositorio y entra al directorio del proyecto:
 
    ```bash
    git clone https://github.com/YOUR_USER/snies-bogota-analytics-mvp.git
    cd snies-bogota-analytics-mvp
    ```
 
-2. Copy the example environment file and adjust variables if necessary:
+2. Copia el archivo de entorno de ejemplo y ajusta las variables si es necesario:
 
    ```bash
    cp .env.example .env
-   # Edit .env to set DRY_RUN_ONLY=false once validation succeeds
+   # Edita .env para establecer DRY_RUN_ONLY=false una vez la validación sea exitosa
    ```
 
-3. Build and run the containers:
+3. Construye y ejecuta los contenedores:
 
    ```bash
    docker compose up --build
    ```
 
-The pipeline will download and validate the required files, create the database schemas, load the data, compute the mart and then exit.  Logs are written to the `logs/` directory and a manifest of downloaded files is saved in `logs/manifest.json`.
+El pipeline descargará y validará los archivos requeridos, creará los esquemas de la base de datos, cargará los datos, calculará el mart y luego finalizará. Los logs se escriben en el directorio `logs/` y un manifiesto de los archivos descargados se guarda en `logs/manifest.json`.
 
-### Running without Docker
+### Ejecución sin Docker
 
-If you prefer not to use Docker, you can run the pipeline directly on your machine.  You will need Python 3.11 and PostgreSQL available locally.
+Si prefieres no usar Docker, puedes ejecutar el pipeline directamente en tu máquina. Necesitarás Python 3.11 y PostgreSQL disponibles localmente.
 
-1. Create and activate a virtual environment:
+1. Crea y activa un entorno virtual:
 
    ```bash
    python3 -m venv .venv
@@ -80,70 +80,70 @@ If you prefer not to use Docker, you can run the pipeline directly on your machi
    pip install -r requirements.txt
    ```
 
-2. Create a `.env` file (copy from `.env.example`) and set the connection variables for your local PostgreSQL instance.
+2. Crea un archivo `.env` (copiado desde `.env.example`) y configura las variables de conexión para tu instancia local de PostgreSQL.
 
-3. Run the pipeline:
+3. Ejecuta el pipeline:
 
    ```bash
    python app/main.py
    ```
 
-## Expected outputs
+## Resultados esperados
 
-When the pipeline finishes successfully you should see:
+Cuando el pipeline termine correctamente deberías ver:
 
-* A table `staging.students` with normalised student data for Bogotá (2022–2024).
-* A table `staging.teachers` with normalised teacher data for Bogotá (2022–2024).
-* A table `analytics.fact_ies_year` aggregating counts by IES and year.
-* A view `analytics.mart_student_teacher_ratio` with the student/teacher ratio for each IES and year.
+* Una tabla `staging.students` con datos normalizados de estudiantes para Bogotá (2022–2024).
+* Una tabla `staging.teachers` con datos normalizados de docentes para Bogotá (2022–2024).
+* Una tabla `analytics.fact_ies_year` que agrega los conteos por IES y año.
+* Una vista `analytics.mart_student_teacher_ratio` con la relación estudiante/docente para cada IES y año.
 
-You can query the final mart with:
+Puedes consultar el mart final con:
 
 ```sql
 SELECT * FROM analytics.mart_student_teacher_ratio ORDER BY ies_code, year;
 ```
 
-## Engineering decisions
+## Decisiones de ingeniería
 
-This project makes several deliberate choices to prioritise cost, simplicity and maintainability:
+Este proyecto toma varias decisiones deliberadas para priorizar costo, simplicidad y mantenibilidad:
 
-* **Narrow scope** – We limit the ingestion to six specific datasets and filter to the city of Bogotá and years 2022–2024.  This reduces processing time and storage requirements.
-* **Dual validation** – Before processing each file we verify that it is actually published on the SNIES portal and then perform a technical validation (HTTP status, file size, Excel format, basic schema).  If a file fails either check, the pipeline stops or falls back to a user‑configured URL.
-* **PostgreSQL** – Using a relational database keeps the solution easy to understand, cheap to run and compatible with BI tools.  For an MVP the overhead of distributed processing frameworks would be unjustified.
-* **Configurable fallback** – A `sources.yml` file allows you to define fallback URLs in case the SNIES portal changes structure or certain links break.  This avoids manual code changes when only the URLs need updating.
-* **Docker Compose** – We use Docker Compose for reproducible local deployment without the need for heavy infrastructure.  A single command builds the image, starts the database, runs the pipeline and cleans up.
+* **Alcance acotado** – Limitamos la ingestión a seis conjuntos de datos específicos y filtramos por la ciudad de Bogotá y los años 2022–2024. Esto reduce el tiempo de procesamiento y los requisitos de almacenamiento.
+* **Validación dual** – Antes de procesar cada archivo verificamos que realmente esté publicado en el portal SNIES y luego realizamos una validación técnica (estado HTTP, tamaño del archivo, formato Excel, esquema básico). Si un archivo falla cualquiera de las dos verificaciones, el pipeline se detiene o recurre a una URL configurada por el usuario.
+* **PostgreSQL** – Usar una base de datos relacional mantiene la solución fácil de entender, barata de ejecutar y compatible con herramientas de BI. Para un MVP, la sobrecarga de frameworks de procesamiento distribuido sería injustificada.
+* **Respaldo configurable** – Un archivo `sources.yml` permite definir URL de respaldo en caso de que el portal SNIES cambie de estructura o ciertos enlaces fallen. Esto evita cambios manuales en el código cuando solo es necesario actualizar las URL.
+* **Docker Compose** – Usamos Docker Compose para un despliegue local reproducible sin necesidad de infraestructura pesada. Un solo comando construye la imagen, inicia la base de datos, ejecuta el pipeline y limpia el entorno.
 
-## Repository structure
+## Estructura del repositorio
 
 ```text
 snies-bogota-analytics-mvp/
-├── app/                  # Python source code
-│  ├── config/           # Configuration files (sources.yml, settings)
-│  ├── extract/          # Downloading and validation logic
-│  ├── transform/        # Data cleaning and normalisation
-│  ├── load/             # Database loading logic
-│  ├── utils/            # Shared helpers (logging, validation)
-│  └── main.py           # Entry point coordinating the pipeline
-├── sql/                  # SQL scripts to create schemas, tables and views
-├── docs/                 # Additional documentation and diagrams
+├── app/                  # Código fuente en Python
+│  ├── config/            # Archivos de configuración (sources.yml, settings)
+│  ├── extract/           # Lógica de descarga y validación
+│  ├── transform/         # Limpieza y normalización de datos
+│  ├── load/              # Lógica de carga a la base de datos
+│  ├── utils/             # Utilidades compartidas (logging, validación)
+│  └── main.py            # Punto de entrada que coordina el pipeline
+├── sql/                  # Scripts SQL para crear esquemas, tablas y vistas
+├── docs/                 # Documentación adicional y diagramas
 ├── data/
-│  ├── raw/              # Downloaded source files (not tracked in git)
-│  └── processed/        # Intermediate processed files (not tracked in git)
-├── logs/                 # Pipeline logs and manifest
-├── tests/                # Unit and integration tests
-├── docker-compose.yml    # Orchestration of the application and PostgreSQL
-├── Dockerfile            # Builds the Python application image
-├── requirements.txt      # Python dependencies
-├── .env.example          # Example environment variables
-├── .gitignore            # Git ignore patterns
-├── LICENSE               # Project license
-└── README.md             # This documentation
+│  ├── raw/               # Archivos fuente descargados (no versionados en git)
+│  └── processed/         # Archivos procesados intermedios (no versionados en git)
+├── logs/                 # Logs del pipeline y manifiesto
+├── tests/                # Pruebas unitarias y de integración
+├── docker-compose.yml    # Orquestación de la aplicación y PostgreSQL
+├── Dockerfile            # Construye la imagen de la aplicación Python
+├── requirements.txt      # Dependencias de Python
+├── .env.example          # Variables de entorno de ejemplo
+├── .gitignore            # Patrones ignorados por git
+├── LICENSE               # Licencia del proyecto
+└── README.md             # Esta documentación
 ```
 
-## Contributing
+## Contribuciones
 
-Contributions, issues and feature requests are welcome!  Feel free to fork the repository, open issues or submit pull requests.
+Las contribuciones, los issues y las solicitudes de nuevas funcionalidades son bienvenidas. No dudes en hacer fork del repositorio, abrir issues o enviar pull requests.
 
-## License
+## Licencia
 
-This project is licensed under the MIT License.  See the [LICENSE](LICENSE) file for details.
+Este proyecto está licenciado bajo la licencia MIT. Consulta el archivo [LICENSE](LICENSE) para más detalles.
